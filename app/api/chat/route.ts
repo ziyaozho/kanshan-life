@@ -5,8 +5,16 @@ export async function POST(req: NextRequest) {
     const { messages, context } = await req.json()
 
     const apiKey = process.env.DEEPSEEK_API_KEY
+
+    // 如果没有 API key，返回预置的看山回复，让项目无密钥也能运行
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
+      return NextResponse.json({
+        choices: [{
+          message: {
+            content: '我在这儿呢。不管有没有 AI，我都可以陪你聊聊。\\n\\n（如需 AI 对话，请在 .env.local 中配置 DEEPSEEK_API_KEY）'
+          }
+        }]
+      })
     }
 
     let systemContent =
