@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
+import { getCompletedTasks, type Task } from '@/app/lib/tasks'
 
 interface CompletedTask {
   title: string
@@ -70,17 +71,20 @@ export default function BookshelfPage() {
   const slots = bookSlots
 
   useEffect(() => {
-    const saved = localStorage.getItem('completedTasks')
-    if (saved) {
-      try {
-        const list = JSON.parse(saved) as CompletedTask[]
-        // 按时间排序，新的在前
-        list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        setCompletedTasks(list)
-      } catch {
-        // ignore
-      }
-    }
+    // 使用统一任务API读取已完成任务
+    const tasks = getCompletedTasks()
+    const list: CompletedTask[] = tasks
+      .filter((t) => t.status === 'completed')
+      .sort((a, b) => new Date(b.completedAt || b.createdAt).getTime() - new Date(a.completedAt || a.createdAt).getTime())
+      .map((t) => ({
+        title: t.title,
+        date: t.completedAt || t.createdAt,
+        type: t.type,
+        note: t.note,
+        skillName: t.skillName,
+        changes: t.changes,
+      }))
+    setCompletedTasks(list)
   }, [])
 
   const getFruitBrightness = (dateStr: string) => {

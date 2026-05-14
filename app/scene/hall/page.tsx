@@ -106,11 +106,12 @@ function getFruitBrightness(dateStr: string) {
 
 export default function HallPage() {
   const router = useRouter()
-  const [mainQuest, setMainQuest] = useState('去回答那个你一直在逃避的问题')
-  const [sideQuests, setSideQuests] = useState<string[]>(defaultSideQuests)
+  const [mainQuest, setMainQuest] = useState('')
+  const [sideQuests, setSideQuests] = useState<string[]>([])
   const [completedCount, setCompletedCount] = useState(0)
   const [selectedSides, setSelectedSides] = useState<Set<number>>(new Set())
   const [skills, setSkills] = useState<UserSkill[]>([])
+  const [skillTasks, setSkillTasks] = useState<Task[]>([])
   const [activeSideIndex, setActiveSideIndex] = useState<number | null>(null)
   const [sideNote, setSideNote] = useState('')
   const [sideFeedback, setSideFeedback] = useState('')
@@ -150,12 +151,14 @@ export default function HallPage() {
     const activeTasks = getActiveTasks()
     const main = activeTasks.find((t) => t.type === 'main')
     const sides = activeTasks.filter((t) => t.type === 'side')
+    const sTasks = activeTasks.filter((t) => t.type === 'skill')
     if (main) {
       setMainQuest(main.title)
       if (main.totalDays) setMainTotalDays(main.totalDays)
       if (main.currentDay) setMainCurrentDay(main.currentDay)
     }
     if (sides.length > 0) setSideQuests(sides.map((s) => s.title))
+    setSkillTasks(sTasks)
 
     const completedList = getCompletedTasks()
     setCompletedCount(getCompletedCount())
@@ -779,6 +782,38 @@ export default function HallPage() {
             })}
           </ul>
         </div>
+
+        {/* 技能任务 —— 与主线/支线分开显示 */}
+        {skillTasks.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs tracking-[0.15em] text-deep-brown/50 mb-3 font-medium uppercase">
+              技能任务
+            </h3>
+            <div className="space-y-2">
+              {skillTasks.map((task, i) => (
+                <motion.div
+                  key={task.id}
+                  className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/40 border border-warm-gold/10 cursor-pointer hover:bg-white/60 transition-all"
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.9 + i * 0.1 }}
+                  onClick={() => router.push('/scene/quest')}
+                >
+                  <span className="text-xs">🎯</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-deep-brown truncate">{task.title}</p>
+                    {task.skillName && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-warm-gold/15 text-warm-gold">
+                        {task.skillName}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-deep-brown/30">→</span>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 技能掌握度 */}
         {skills.length > 0 && (

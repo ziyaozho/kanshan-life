@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { checkAchievements, Achievement } from '@/app/lib/achievements'
 import AchievementPopup from '@/app/components/AchievementPopup'
-import { getActiveTasks, createTask, completeTask } from '@/app/lib/tasks'
+import { getActiveTasks, createTask, completeTask, deleteTask } from '@/app/lib/tasks'
 
 interface SkillMetric {
   label: string
@@ -377,8 +377,8 @@ export default function SkillsTracker() {
       }
     })
 
-    let taskTitle = `${skill.name} · ${skill.progress < 30 ? '基础期' : skill.progress < 60 ? '进阶期' : '冲刺期'}`
-    let taskDesc = `从「${skill.current}」向「${skill.target}」迈进，每天一小步，不急。`
+    let taskTitle = ''
+    let taskDesc = ''
 
     try {
       const res = await fetch('/api/task', {
@@ -396,15 +396,28 @@ export default function SkillsTracker() {
         }),
       })
 
-      if (res.ok) {
-        const data = await res.json()
-        if (data.title) taskTitle = data.title
-        if (data.desc) taskDesc = data.desc
+      if (!res.ok) {
+        throw new Error(`API ${res.status}`)
       }
-    } catch {
-      // API 失败用回退文案
-    } finally {
+
+      const data = await res.json()
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      taskTitle = data.title || ''
+      taskDesc = data.desc || ''
+    } catch (err) {
       setIsGenerating(false)
+      alert('AI 任务生成失败：' + (err instanceof Error ? err.message : 'Unknown error'))
+      return
+    }
+
+    setIsGenerating(false)
+
+    if (!taskTitle || !taskDesc) {
+      alert('AI 返回的任务内容为空')
+      return
     }
 
     const task = {
@@ -416,29 +429,28 @@ export default function SkillsTracker() {
       skillName: skill.name,
     }
 
-    // 使用统一API创建技能任务（主线类型）
+    // 使用统一API创建技能任务
     // 先删除同技能的旧任务
     const activeTasks = getActiveTasks()
-    const toDelete = activeTasks.filter((t) => {
-      if (t.type === 'skill' && t.skillName === skill.name) return true
-      if (t.type === 'main' && t.skillName === skill.name) return true
-      if (t.type === 'main' && t.title.includes(skill.name)) return true
-      return false
-    })
-    // 创建新任务
+    activeTasks
+      .filter((t) => t.type === 'skill' && t.skillName === skill.name)
+      .forEach((t) => deleteTask(t.id))
+
+    // 创建新技能任务（类型为 skill，与主线分开）
     createTask({
-      type: 'main',
-      title: task.title,
-      desc: task.desc,
-      totalDays: task.totalDays,
-      currentDay: task.currentDay,
+      type: 'skill',
+      title: taskTitle,
+      desc: taskDesc,
+      totalDays: 7,
+      currentDay: 1,
       skillName: skill.name,
+      skillId: skill.id,
     })
 
     // 立即刷新 skillTasks 状态 —— 保留已有任务，只更新当前技能
     setSkillTasks((prev) => ({
       ...prev,
-      [skill.name]: { title: task.title, desc: task.desc, currentDay: task.currentDay, totalDays: task.totalDays },
+      [skill.name]: { title: taskTitle, desc: taskDesc, currentDay: 1, totalDays: 7 },
     }))
 
     setPublishedSkillId(skill.id)

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import Liukanshan from '@/app/components/Liukanshan'
+import { createTask, deleteTask, getActiveTasks } from '@/app/lib/tasks'
 
 // ==================== 六维数据 ====================
 
@@ -37,148 +38,12 @@ const defaultScores: Record<DimensionKey, number> = {
 }
 
 interface Task {
-  type: 'main' | 'side'
+  type: 'main' | 'side' | 'skill'
   title: string
   desc: string
   totalDays?: number
   currentDay?: number
-}
-
-function generateGoalBasedTasks(goal: string): Task[] {
-  const lower = goal.toLowerCase()
-  const tasks: Task[] = []
-
-  // 跑步 / 马拉松
-  if (lower.includes('跑') || lower.includes('马拉松')) {
-    tasks.push({
-      type: 'main',
-      title: '第一周：建立跑步习惯',
-      desc: '每周跑3次，每次20分钟，不追求速度，只追求规律。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '买一个跑步记录APP', desc: '记录每次的配速和心率，看见数字在变化。' })
-    tasks.push({ type: 'side', title: '找一条喜欢的路线', desc: '不需要很远，但要让你愿意重复走。' })
-  }
-  // 吉他 / 音乐
-  else if (lower.includes('吉他') || lower.includes('音乐') || lower.includes('弹琴')) {
-    tasks.push({
-      type: 'main',
-      title: '第一周：每天15分钟基本功',
-      desc: '和弦转换+C大调音阶，不求快，只求手指记住位置。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '录下第一首完整弹唱', desc: '哪怕只有30秒，录下来，你会看见进步。' })
-    tasks.push({ type: 'side', title: '学一首喜欢的歌', desc: '选一首简单到你觉得"这我也可以"的歌。' })
-  }
-  // 学习 / 考试 / 技能
-  else if (lower.includes('学') || lower.includes('考试') || lower.includes('考证') || lower.includes('英语')) {
-    tasks.push({
-      type: 'main',
-      title: '第一周：建立每日学习节奏',
-      desc: '每天固定1小时，番茄工作法，25分钟专注+5分钟休息。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '找到1个学习社群', desc: '一个人走得快，一群人走得远。' })
-    tasks.push({ type: 'side', title: '做一次模拟测试', desc: '先知道自己的起点，才知道路有多远。' })
-  }
-  // 社交 / 恋爱
-  else if (lower.includes('朋友') || lower.includes('社交') || lower.includes('恋爱') || lower.includes('脱单')) {
-    tasks.push({
-      type: 'main',
-      title: '第一周：主动发起一次邀约',
-      desc: '不要等别人找你，这周主动约一个人喝咖啡或散步。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '删除3个已读不回的对话框', desc: '把注意力留给值得的人。' })
-    tasks.push({ type: 'side', title: '参加一次线下活动', desc: '读书会、羽毛球、桌游局，什么都可以。' })
-  }
-  // 情绪 / 心理
-  else if (lower.includes('焦虑') || lower.includes('情绪') || lower.includes('平静') || lower.includes('治愈')) {
-    tasks.push({
-      type: 'main',
-      title: '第一周：每天写3行情绪日记',
-      desc: '不分析，不评判，只是记录：此刻我是什么感觉。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '建立一个睡前仪式', desc: '泡脚、冥想、或读5页书，让身体知道该休息了。' })
-    tasks.push({ type: 'side', title: '取消3个让你焦虑的信息源', desc: '取关、退群、关闭推送，保护注意力。' })
-  }
-  // 写作 / 创作
-  else if (lower.includes('写') || lower.includes('创作') || lower.includes('自媒体')) {
-    tasks.push({
-      type: 'main',
-      title: '第一周：每天写200字',
-      desc: '写什么不重要，重要的是让手指习惯表达。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '注册一个发布平台', desc: '知乎、公众号、小红书，选一个，先发第一篇。' })
-    tasks.push({ type: 'side', title: '建立一个素材库', desc: '随时记录灵感，好记性不如烂笔头。' })
-  }
-  // 默认：通用目标拆解
-  else {
-    tasks.push({
-      type: 'main',
-      title: '第一周：把大目标拆成每天可做的一小步',
-      desc: '不需要宏伟计划，只要今天能比昨天近一点。',
-      totalDays: 7,
-      currentDay: 1,
-    })
-    tasks.push({ type: 'side', title: '找到1个同行者或榜样', desc: '看看已经做到的人，他们第一步是怎么走的。' })
-    tasks.push({ type: 'side', title: '记录一次试错', desc: '失败不是反方向，它是路的一部分。' })
-  }
-
-  return tasks
-}
-
-function generateTasks(dims: Dimension[]): Task[] {
-  const userGoal = typeof window !== 'undefined' ? localStorage.getItem('userGoal') : null
-
-  // 如果有用户自定义目标，优先基于目标生成任务
-  if (userGoal && userGoal.trim().length > 0) {
-    return generateGoalBasedTasks(userGoal)
-  }
-
-  const sorted = [...dims].sort((a, b) => (a.value ?? 0) - (b.value ?? 0))
-  const weakest = sorted[0]
-  const secondWeak = sorted[1]
-
-  const tasks: Task[] = []
-
-  // 主线：针对最低维度
-  const mainTaskMap: Record<string, { title: string; desc: string }> = {
-    clarity: { title: '找到你的北极星', desc: '用7天时间，每天记录一件让你忘记时间的事。' },
-    skill: { title: '打造一把利器', desc: '选择一项可迁移技能，每天投入1小时，持续21天。' },
-    passion: { title: '重新点燃火焰', desc: '列出10件童年让你兴奋的事，选一件本周重启。' },
-    social: { title: '走出孤岛', desc: '参加一次线下活动，认识一位同频的新朋友。' },
-    emotion: { title: '建立情绪锚点', desc: '每天写3行情绪日记，连续14天。' },
-    family: { title: '与过去和解', desc: '给原生家庭写一封不寄出的信，然后烧掉。' },
-  }
-
-  if (mainTaskMap[weakest.key]) {
-    tasks.push({ type: 'main', ...mainTaskMap[weakest.key], totalDays: 7, currentDay: 1 })
-  }
-
-  // 支线：针对次低维度
-  const sideTaskMap: Record<string, { title: string; desc: string }> = {
-    clarity: { title: '和三年后的自己对话', desc: '写一封信给2028年的你，问他现在该做什么。' },
-    skill: { title: '教别人一件事', desc: '把你最擅长的事，写成一篇知乎回答。' },
-    passion: { title: '尝试一次跨界', desc: '选一个完全陌生的领域，体验3小时。' },
-    social: { title: '主动联系一个人', desc: '给很久没联系的朋友发一句"最近好吗"。' },
-    emotion: { title: '建立一个小仪式', desc: '每天睡前做一件让自己平静的小事。' },
-    family: { title: '谢谢一个人', desc: '对给过你温暖的人说一声谢谢。' },
-  }
-
-  if (sideTaskMap[secondWeak.key]) {
-    tasks.push({ type: 'side', ...sideTaskMap[secondWeak.key] })
-  }
-
-  return tasks
+  skillName?: string
 }
 
 // ==================== 雷达图工具函数 ====================
@@ -281,6 +146,10 @@ export default function ProfilePage() {
       const profile = buildProfile()
 
       try {
+        // 先清除旧的主线和支线任务（避免重复）
+        const existing = getActiveTasks()
+        existing.filter((t) => t.type === 'main' || t.type === 'side').forEach((t) => deleteTask(t.id))
+
         // 主线任务
         const res = await fetch('/api/task', {
           method: 'POST',
@@ -294,20 +163,22 @@ export default function ProfilePage() {
 
         const data = await res.json()
 
-        // 检查是否是错误响应
+        // 检查是否是错误响应或缺少必要字段
         if (data.error) {
           throw new Error(data.error)
         }
+        if (!data.title || !data.desc) {
+          throw new Error('API 返回数据缺少 title 或 desc')
+        }
 
-        const generated: Task[] = [
-          {
-            type: 'main',
-            title: data.title || '迈出第一步',
-            desc: data.desc || '不用追求完美，先完成，再完善。',
-            totalDays: data.totalDays || 7,
-            currentDay: 1,
-          },
-        ]
+        // 创建主线任务到统一存储
+        createTask({
+          type: 'main',
+          title: data.title,
+          desc: data.desc,
+          totalDays: data.totalDays || 7,
+          currentDay: 1,
+        })
 
         // 同时生成一个支线任务
         try {
@@ -318,11 +189,11 @@ export default function ProfilePage() {
           })
           if (sideRes.ok) {
             const sideData = await sideRes.json()
-            if (!sideData.error) {
-              generated.push({
+            if (!sideData.error && sideData.title && sideData.desc) {
+              createTask({
                 type: 'side',
-                title: sideData.title || '给三年前的自己写一句话',
-                desc: sideData.desc || '打开备忘录，写下你现在想对三年前的自己说的话。',
+                title: sideData.title,
+                desc: sideData.desc,
               })
             }
           }
@@ -330,12 +201,10 @@ export default function ProfilePage() {
           // 支线任务获取失败，仅使用主线
         }
 
-        setTasks(generated)
-        localStorage.setItem('lifeTasks', JSON.stringify(generated))
+        // 同步本地状态
+        setTasks(getActiveTasks().filter((t) => t.type === 'main' || t.type === 'side'))
       } catch (err) {
-        const fallback = generateTasks(dimensions)
-        setTasks(fallback)
-        localStorage.setItem('lifeTasks', JSON.stringify(fallback))
+        console.error('Task generation failed:', err)
       } finally {
         setIsGeneratingTasks(false)
       }
@@ -343,13 +212,6 @@ export default function ProfilePage() {
 
     fetchTasks()
   }, [dimensions])
-
-  // 持久化任务到 localStorage
-  useEffect(() => {
-    if (tasks.length > 0) {
-      localStorage.setItem('lifeTasks', JSON.stringify(tasks))
-    }
-  }, [tasks])
 
   useEffect(() => {
     const t1 = setTimeout(() => setProgress(1), 400)

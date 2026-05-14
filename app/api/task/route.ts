@@ -15,24 +15,11 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.DEEPSEEK_API_KEY
 
-    // 如果没有 API key，返回预置的任务数据，让项目无密钥也能运行
     if (!apiKey) {
-      if (type === 'side') {
-        return NextResponse.json({
-          title: '给三年前的自己写一句话',
-          desc: '打开备忘录，写下你现在想对三年前的自己说的话。不用长，一句就够。',
-        })
-      }
-      return NextResponse.json({
-        title: '迈出第一步',
-        desc: '不用追求完美，先完成，再完善。',
-        totalDays: 7,
-        stages: [
-          { day: 1, title: '第一天', desc: '花10分钟，只做最简单的开始动作。' },
-          { day: 3, title: '第三天', desc: '把前两天的感受写下来，哪怕只有一句话。' },
-          { day: 7, title: '第七天', desc: '完成一个小闭环，哪怕不完美。' },
-        ],
-      })
+      return NextResponse.json(
+        { error: 'DEEPSEEK_API_KEY not configured' },
+        { status: 500 }
+      )
     }
 
     const dimLabels: Record<string, string> = {
@@ -216,24 +203,10 @@ ${userContext}
     try {
       taskData = JSON.parse(jsonStr)
     } catch {
-      // 如果解析失败，返回 fallback
-      if (type === 'side') {
-        taskData = {
-          title: '给三年前的自己写一句话',
-          desc: '打开备忘录，写下你现在想对三年前的自己说的话。不用长，一句就够。',
-        }
-      } else {
-        taskData = {
-          title: '迈出第一步',
-          desc: '不用追求完美，先完成，再完善。',
-          totalDays: 7,
-          stages: [
-            { day: 1, title: '第一天', desc: '花10分钟，只做最简单的开始动作。' },
-            { day: 3, title: '第三天', desc: '把前两天的感受写下来，哪怕只有一句话。' },
-            { day: 7, title: '第七天', desc: '完成一个小闭环，哪怕不完美。' },
-          ],
-        }
-      }
+      return NextResponse.json(
+        { error: 'AI response parse failed', raw: jsonStr.slice(0, 500) },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json(taskData)

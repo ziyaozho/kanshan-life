@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import Liukanshan from '@/app/components/Liukanshan'
@@ -180,6 +180,12 @@ function calculateScores(mbti: string, hobbies: string, answers: Record<number, 
 
 type Phase = 'idle' | 'mbti' | 'hobbies' | 'questions' | 'video1' | 'midQuestion' | 'video2' | 'transitioning'
 
+// 读取 cookie
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? decodeURIComponent(match[2]) : null
+}
+
 export default function TunnelPage() {
   const router = useRouter()
   const [phase, setPhase] = useState<Phase>('idle')
@@ -189,7 +195,20 @@ export default function TunnelPage() {
   const [mbtiInput, setMbtiInput] = useState('')
   const [hobbiesInput, setHobbiesInput] = useState('')
   const [showTransition, setShowTransition] = useState(false)
+  const [zhihuUser, setZhihuUser] = useState<{ name?: string; avatar?: string } | null>(null)
   const video1Ref = useRef<HTMLVideoElement>(null)
+
+  // 检测知乎登录状态
+  useEffect(() => {
+    const raw = getCookie('zhihu_user')
+    if (raw) {
+      try {
+        setZhihuUser(JSON.parse(raw))
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
 
   const progress = ((currentIndex + 1) / questions.length) * 100
   const currentQuestion = questions[currentIndex]
@@ -491,7 +510,7 @@ export default function TunnelPage() {
                 来吧。我们一起去看看，你是怎么变成现在的你的。
               </p>
 
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-3">
                 <button
                   onClick={startQuestions}
                   className="btn-warm text-white border-white/60 bg-white/10 hover:bg-white/20"
@@ -502,6 +521,25 @@ export default function TunnelPage() {
                 >
                   把手给我
                 </button>
+
+                {/* 知乎登录 */}
+                {zhihuUser ? (
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20">
+                    {zhihuUser.avatar ? (
+                      <img src={zhihuUser.avatar} alt="" className="w-5 h-5 rounded-full" />
+                    ) : (
+                      <span className="text-xs">👤</span>
+                    )}
+                    <span className="text-xs text-white/80">{zhihuUser.name || '知乎用户'}</span>
+                  </div>
+                ) : (
+                  <a
+                    href="/api/auth/zhihu"
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white/10 border border-white/20 text-white/70 hover:bg-white/20 hover:text-white transition-all text-xs"
+                  >
+                    知乎登录
+                  </a>
+                )}
               </div>
             </motion.div>
           </>

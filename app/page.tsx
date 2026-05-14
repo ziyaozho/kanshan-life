@@ -1,11 +1,29 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import Liukanshan from '@/app/components/Liukanshan'
 
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? decodeURIComponent(match[2]) : null
+}
+
 export default function Home() {
   const router = useRouter()
+  const [zhihuUser, setZhihuUser] = useState<{ name?: string; avatar?: string } | null>(null)
+
+  useEffect(() => {
+    const raw = getCookie('zhihu_user')
+    if (raw) {
+      try {
+        setZhihuUser(JSON.parse(raw))
+      } catch {
+        // ignore
+      }
+    }
+  }, [])
 
   return (
     <motion.main
@@ -109,17 +127,31 @@ export default function Home() {
           读懂你的知乎足迹，找到人生的第二幕
         </p>
 
-        <motion.button
-          onClick={() => router.push('/scene/tunnel')}
-          className="px-10 py-3 rounded-full text-sm tracking-widest text-white border border-warm-gold/40 bg-warm-gold/10 backdrop-blur-sm hover:bg-warm-gold/20 transition-all duration-300"
-          style={{
-            boxShadow: '0 0 24px rgba(230, 184, 156, 0.15)',
-          }}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          开始探索
-        </motion.button>
+        {zhihuUser ? (
+          <motion.button
+            onClick={() => router.push('/scene/tunnel')}
+            className="px-10 py-3 rounded-full text-sm tracking-widest text-white border border-warm-gold/40 bg-warm-gold/10 backdrop-blur-sm hover:bg-warm-gold/20 transition-all duration-300"
+            style={{
+              boxShadow: '0 0 24px rgba(230, 184, 156, 0.15)',
+            }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            开始探索
+          </motion.button>
+        ) : (
+          <a
+            href="/api/auth/zhihu"
+            className="inline-flex items-center gap-2 px-8 py-3 rounded-full text-sm tracking-widest text-white border border-white/20 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all duration-300"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+              <polyline points="10 17 15 12 10 7" />
+              <line x1="15" y1="12" x2="3" y2="12" />
+            </svg>
+            知乎登录
+          </a>
+        )}
       </motion.div>
 
       {/* 底部小字 */}

@@ -50,7 +50,14 @@
       "Bash(git commit -m ' *)",
       "Bash(git branch *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(pm2 show *)",
+      "WebFetch(domain:www.zhihu.com)",
+      "WebSearch",
+      "Bash(curl *)",
+      "Bash(nslookup *)",
+      "Bash(npx pm2 *)",
+      "Bash(ssh *)"
     ]
   }
 }

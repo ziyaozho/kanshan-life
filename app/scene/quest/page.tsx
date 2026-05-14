@@ -811,7 +811,7 @@ export default function QuestPage() {
                     className="absolute"
                     style={{
                       left: '65%',
-                      top: `${20 + characterPos * 18}%`,
+                      top: `${72 - characterPos * 16}%`,
                     }}
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
